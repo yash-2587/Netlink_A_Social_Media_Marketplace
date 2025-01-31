@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reset Password - NetLink</title>
+    <link rel="shortcut icon" type="image/x-icon" href="logo.png">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            background-color: #161160;
+            color: white;
+        }
+        .form-control {
+            border-radius: 0.75rem;
+        }
+        .btn-custom {
+            background-color: #ff6600;
+            color: white;
+            border-radius: 0.75rem;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="#"><h4><i class="fa fa-user-plus"></i> NetLink</h4></a>
+        </div>
+    </nav>
+
+    <div class="container" style="margin-top: 100px;">
+        <div class="row">
+            <div class="col-md-6 offset-md-3">
+                <h3 class="text-center">Reset Password</h3>
+                <form id="verifyForm" method="POST" action="reset.php">
+                    <!-- Hidden field for contact -->
+                    <input type="hidden" name="contact" id="contact" value="">
+
+                    <div class="form-group">
+                        <label for="password">New Password</label>
+                        <input type="password" class="form-control" id="password" name="password" placeholder="Enter your password" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="cpassword">Confirm Password</label>
+                        <input type="password" class="form-control" id="cpassword" name="cpassword" placeholder="Confirm your password" required>
+                    </div>
+                    <button type="submit" class="btn btn-custom btn-block">Change Password</button>
+                    <p id="errorMsg" class="text-danger text-center mt-2"></p>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get the contact from the URL query parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const contact = urlParams.get("contact");
+
+        // Set the contact as the value of the hidden input field
+        document.getElementById("contact").value = contact;
+    </script>
+</body>
+</html>
