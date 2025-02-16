@@ -6,7 +6,7 @@ define('DB_CONFIG', [
     'host' => 'localhost',
     'db'   => 'netlink',
     'user' => 'root',
-    'pass' => '2629',
+    'pass' => '1234',
 ]);
 
 function getDbConnection() {
