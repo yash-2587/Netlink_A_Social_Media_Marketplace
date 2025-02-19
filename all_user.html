@@ -1,0 +1,76 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Users</title>
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+    <div class="header">
+        <h1>All Registered Users</h1>
+        <a href="admin.html" class="back-btn">← Back to Dashboard</a>
+    </div>
+    
+    <div class="table-container">
+        <table id="usersTable">
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Verified</th>
+                </tr>
+            </thead>
+            <tbody>
+             
+            </tbody>
+        </table>
+    </div>
+    <script src="all_user.js"></script>
+</body>
+</html> -->
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>All Users</title>
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+  <div class="header">
+    <h1>All Registered Users</h1>
+    <a href="admin.html" class="back-btn">← Back to Dashboard</a>
+    <!-- Delete button in the top right corner -->
+    <button id="enableDelete" class="delete-btn">Delete</button>
+  </div>
+
+  <div class="table-container">
+    <table id="usersTable">
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Email</th>
+          <th>Verified</th>
+          <!-- Extra header for checkboxes -->
+          <th class="checkbox-column">Select</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Data will be populated by JavaScript -->
+      </tbody>
+    </table>
+  </div>
+  
+  <!-- Action buttons for delete mode -->
+  <div class="action-buttons" id="actionButtons">
+    <button id="applyDelete" class="apply-btn">Apply Changes</button>
+    <button id="cancelDelete" class="cancel-btn">Cancel</button>
+  </div>
+  
+  <script src="all_user.js"></script>
+</body>
+</html>
