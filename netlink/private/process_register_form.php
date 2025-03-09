@@ -20,6 +20,11 @@ function validateField($field, $name, $minLength, $maxLength = false, $numeric =
 
     $value = trim($_POST[$field]);
 
+    if ($field === 'csrf_token' && !validateCSRFToken($value)) {
+        $errors[] = "Invalid form submission.";
+        return;
+    }
+
     if (in_array($field, ['email', 'phone_number', 'username']) && does_value_exist($conn, 'users_table', $field, $value)) {
         $errors[] = "$name already exists. Please choose a different $name.";
         return;
@@ -57,16 +62,33 @@ function validateField($field, $name, $minLength, $maxLength = false, $numeric =
             return;
         }
     }
+
+    if ($field === 'password') {
+        if (!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$/', $value)) {
+            $errors[] = "Password must be at least 8 characters and contain at least one uppercase letter, one lowercase letter, and one number.";
+            return;
+        }
+    }
 }
 
+function generateCSRFToken() {
+    if (empty($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['csrf_token'];
+}
+
+function validateCSRFToken($token) {
+    return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
+}
 
 $errors = [];
 
 validateField('email', 'Email', 1, 255, false, true);
 validateField('phone_number', 'Phone number', 3, 15, true);
-validateField('full_name', 'Full name', 3, 15);
+validateField('full_name', 'Full name', 3, 50);
 validateField('username', 'Username', 1, 15);
-validateField('password', 'Password', 3);
+validateField('password', 'Password', 8, 255);
 
 if (!empty($errors)) {
     echo json_encode($errors);
@@ -82,4 +104,8 @@ $_SESSION['registration_complete'] = true;
 
 header('Location: profile_setup.php');
 exit;
+
+unset($_SESSION['email']);
+unset($_SESSION['phone_number']);
+unset($_SESSION['hashed_password']);
 ?>
