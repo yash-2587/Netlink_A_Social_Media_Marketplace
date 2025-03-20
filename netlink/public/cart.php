@@ -213,7 +213,7 @@ if (!empty($_SESSION['cart']) && is_array($_SESSION['cart'])) {
                                     <div class="title-price-x">
                                         <h4 class="title-price">
                                             <p><?php echo htmlspecialchars($item['name']); ?></p>
-                                            <p class="cart-item-price">Rs <?php echo number_format($item['price'], 2); ?></p>
+                                            <p class="cart-item-price">$ <?php echo number_format($item['price'], 2); ?></p>
                                         </h4>
                                         <form action="" method="POST" style="display: inline;">
                                             <input type="hidden" name="item_id" value="<?php echo $item['id']; ?>">
@@ -227,7 +227,7 @@ if (!empty($_SESSION['cart']) && is_array($_SESSION['cart'])) {
                                             <button type="submit" name="update_quantity" class="btn btn-primary">Update</button>
                                         </form>
                                     </div>
-                                    <h3>Rs <?php echo number_format($item['price'] * $item['quantity'], 2); ?></h3>
+                                    <h3>$ <?php echo number_format($item['price'] * $item['quantity'], 2); ?></h3>
                                 </div>
                             </div>
                         <?php endforeach; ?>
@@ -243,7 +243,7 @@ if (!empty($_SESSION['cart']) && is_array($_SESSION['cart'])) {
 
                 <?php if (!empty($cart_items)): ?>
                     <div class="total-bill">
-                        <h2>Total Bill: Rs <?php echo number_format($total_amount, 2); ?></h2>
+                        <h2>Total Bill: $ <?php echo number_format($total_amount, 2); ?></h2>
                         <form action="" method="POST">
                             <button type="submit" name="clear_cart" class="btn btn-danger">Clear Cart</button>
                             <button type="submit" name="checkout" class="btn btn-success">Checkout</button>
