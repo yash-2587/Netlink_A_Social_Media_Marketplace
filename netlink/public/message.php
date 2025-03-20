@@ -64,7 +64,11 @@ $_SESSION['csrf_token'] = $csrf_token;
       data-csrf-token="<?php echo htmlspecialchars($csrf_token); ?>">
 
     <?php include('header.php'); ?>
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> b580f41 (Initial commit)
     <div class="container-fluid">
         <div class="row" id="chat-layout">
             <!-- Message Sidebar -->
@@ -257,6 +261,7 @@ $_SESSION['csrf_token'] = $csrf_token;
         await fetchMessageHistory(userId);
     }
 
+<<<<<<< HEAD
     async function fetchMessageHistory(receiverId) {
         try {
             if (!receiverId) {
@@ -317,6 +322,76 @@ $_SESSION['csrf_token'] = $csrf_token;
             console.error('Error fetching message history:', error);
         }
     }
+=======
+   // Update the fetchMessageHistory function
+   async function fetchMessageHistory(receiverId) {
+    try {
+        if (!receiverId) {
+            console.error('No receiver ID provided');
+            return;
+        }
+
+        const csrfToken = document.body.dataset.csrfToken;
+        if (!csrfToken) {
+            console.error('No CSRF token found');
+            return;
+        }
+
+        // Call execute_file.php with filename=fetch_message.php
+        const response = await fetch(`/execute_file.php?filename=fetch_message.php&receiver_id=${receiverId}`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+        });
+
+        // Log the raw response for debugging
+        const responseText = await response.text();
+        console.log('Raw Response:', responseText);
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        // Try to parse the response as JSON
+        let messages;
+        try {
+            messages = JSON.parse(responseText);
+        } catch (error) {
+            console.error('Failed to parse JSON:', error);
+            throw new Error('Invalid JSON response');
+        }
+
+        // Clear existing messages
+        const chatMessages = document.getElementById('chat-messages');
+        chatMessages.innerHTML = '';
+
+        // Display messages
+        messages.forEach(msg => {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', 
+                parseInt(msg.sender_id) === parseInt(currentUserId) ? 'sent' : 'received'
+            );
+
+            const timestamp = new Date(msg.timestamp).toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            messageDiv.innerHTML = `
+                <div class="message-content">
+                    <p>${escapeHtml(msg.message)}</p>
+                    <small class="timestamp">${timestamp}</small>
+                </div>
+            `;
+
+            chatMessages.appendChild(messageDiv);
+        });
+
+        scrollToBottom();
+    } catch (error) {
+        console.error('Error fetching message history:', error);
+    }
+}
+>>>>>>> b580f41 (Initial commit)
 
     async function sendMessage() {
         const chatInput = document.getElementById('chat-input');
@@ -348,6 +423,10 @@ $_SESSION['csrf_token'] = $csrf_token;
             console.error('Error sending message:', error);
         }
     }
+<<<<<<< HEAD
+=======
+    
+>>>>>>> b580f41 (Initial commit)
 
     // Helper function to escape HTML
     function escapeHtml(unsafe) {

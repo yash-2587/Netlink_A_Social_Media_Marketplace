@@ -8,7 +8,7 @@ const app = express();
 const server = http.createServer(app);
 const io = require('socket.io')(server, {
     cors: {
-        origin: "http://localhost:8080",
+        origin: "http://localhost:8000",
         methods: ["GET", "POST"],
         credentials: true
     }
@@ -22,7 +22,7 @@ app.use(express.json());
 const db = mysql.createConnection({
     host: 'localhost',
     user: 'root', // Replace with your MySQL username
-    password: '1234', // Replace with your MySQL password
+    password: '2629', // Replace with your MySQL password
     database: 'netlink' // Replace with your database name
 });
 
@@ -34,19 +34,22 @@ db.connect((err) => {
 // Routes
 app.get('/messages', (req, res) => {
     const { sender_id, receiver_id } = req.query;
+
+    if (!sender_id || !receiver_id) {
+        return res.status(400).json({ success: false, message: 'Missing sender_id or receiver_id' });
+    }
+
     const query = `
         SELECT * FROM messages 
         WHERE (sender_id = ? AND receiver_id = ?) 
            OR (sender_id = ? AND receiver_id = ?)
         ORDER BY timestamp ASC
     `;
-    db.query(query, [sender_id, receiver_id, receiver_id, sender], (err, results) => {
+
+    db.query(query, [sender_id, receiver_id, receiver_id, sender_id], (err, results) => {
         if (err) {
             console.error(err);
-            return res.status(500).json({ 
-                success: false, 
-                message: 'Failed to fetch messages' 
-            });
+            return res.status(500).json({ success: false, message: 'Failed to fetch messages' });
         }
         res.json({ success: true, messages: results });
     });

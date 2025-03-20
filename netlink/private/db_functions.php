@@ -282,4 +282,30 @@ function unfollow_user(PDO $pdo, $follower_id, $followed_id)
     $success = $stmt->execute();
     return $success;
 }
+
+function get_user_by_username($conn, $username) {
+    try {
+        $stmt = $conn->prepare("SELECT * FROM users_table WHERE username = ? OR email = ? OR phone_number = ?");
+        $stmt->execute([$username, $username, $username]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        error_log("Database error: " . $e->getMessage());
+        return false;
+    }
+}
+
+function get_all_items($pdo)
+{
+    $sql = "SELECT id, name, description, price, image_path FROM items_table";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute();
+
+    $profiles = [];
+
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $profiles[] = $row;
+    }
+
+    return $profiles;
+}
 ?>

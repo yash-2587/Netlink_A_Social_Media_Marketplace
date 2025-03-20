@@ -26,7 +26,7 @@ $profile_pic_transformed_url = add_transformation_parameters($poster_profile_pic
     <script src="https://unpkg.com/just-validate@latest/dist/just-validate.production.min.js"></script>
 
     <script src="https://cdn.jsdelivr.net/npm/minisearch@6.1.0/dist/umd/index.min.js"></script>
-
+    <script type="module" src="scripts/show-search-suggestions.js" defer></script>
     <link rel="stylesheet" href="css/style.css">
 
     <script type="module" src="scripts/validate-profile-setup.js" defer></script>

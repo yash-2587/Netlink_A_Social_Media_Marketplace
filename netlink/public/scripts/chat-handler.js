@@ -60,7 +60,7 @@ const ChatHandler = {
             });
 
             // Also send via HTTP for persistence
-            const response = await fetch('../private/send_message.php', {
+            const response = await fetch('/execute_file.php?filename=send_message.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',

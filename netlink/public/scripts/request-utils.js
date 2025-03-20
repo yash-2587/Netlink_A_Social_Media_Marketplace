@@ -79,3 +79,10 @@ export const fetchMessages = (receiverId, csrfToken) => {
   };
   return makeRequest(file, { ...params, csrf_token: csrfToken });
 };
+<<<<<<< HEAD
+=======
+export const getItemsList = () => {
+  const file = "get_items_list.php";
+  return makeRequest(file, {});
+};
+>>>>>>> b580f41 (Initial commit)
