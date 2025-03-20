@@ -29,6 +29,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_to_cart'])) {
         ];
     }
 }
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_item'])) {
+    $item_name = htmlspecialchars($_POST['item_name']);
+    $item_description = htmlspecialchars($_POST['item_description']);
+    $item_price = floatval($_POST['item_price']);
+    $user_id = $_SESSION['user_id']; 
+
+    if (isset($_FILES['item_image']) && $_FILES['item_image']['error'] === UPLOAD_ERR_OK) {
+        $upload_dir = 'uploads/items/'; 
+        if (!is_dir($upload_dir)) {
+            mkdir($upload_dir, 0755, true); 
+        }
+
+        $file_name = basename($_FILES['item_image']['name']);
+        $file_path = $upload_dir . uniqid() . '_' . $file_name; 
+
+        if (move_uploaded_file($_FILES['item_image']['tmp_name'], $file_path)) {
+
+            $stmt = $conn->prepare("INSERT INTO items_table (user_id, name, description, price, image_path) VALUES (?, ?, ?, ?, ?)");
+            $stmt->bind_param("issds", $user_id, $item_name, $item_description, $item_price, $file_path);
+
+            if ($stmt->execute()) {
+                $success_message = "Item listed successfully!";
+            } else {
+                $error_message = "Failed to list item. Please try again.";
+            }
+            $stmt->close();
+        } else {
+            $error_message = "Failed to upload image. Please try again.";
+        }
+    } else {
+        $error_message = "Please upload an image for the item.";
+    }
+}
+
 
 // Fetch all items from database
 $items = [];
@@ -114,9 +148,36 @@ $cart_item_ids = array_column($_SESSION['cart'], 'id');
 
 </div>
 
-<!-- Modal for listing new items -->
 <div class="modal fade" id="addItemModal" tabindex="-1" aria-labelledby="addItemModalLabel" aria-hidden="true">
-  <!-- Your existing modal code here -->
+         <div class="modal-dialog">
+             <div class="modal-content">
+                 <div class="modal-header">
+                     <h5 class="modal-title" id="addItemModalLabel">List an Item</h5>
+                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                 </div>
+                 <div class="modal-body">
+                     <form action="" method="POST" enctype="multipart/form-data">
+                         <div class="mb-3">
+                             <label for="item_name" class="form-label">Item Name</label>
+                             <input type="text" class="form-control" id="item_name" name="item_name" required>
+                         </div>
+                         <div class="mb-3">
+                             <label for="item_description" class="form-label">Description</label>
+                             <textarea class="form-control" id="item_description" name="item_description" rows="3" required></textarea>
+                         </div>
+                         <div class="mb-3">
+                             <label for="item_price" class="form-label">Price</label>
+                             <input type="number" step="0.01" class="form-control" id="item_price" name="item_price" required>
+                         </div>
+                         <div class="mb-3">
+                             <label for="item_image" class="form-label">Item Image</label>
+                             <input type="file" class="form-control" id="item_image" name="item_image" accept="image/*" required>
+                         </div>
+                         <button type="submit" name="submit_item" class="btn btn-primary">Submit</button>
+                     </form>
+                 </div>
+             </div>
+         </div>
 </div>
 
 </body>
