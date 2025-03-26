@@ -58,6 +58,8 @@ $_SESSION['csrf_token'] = $csrf_token;
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script type="module" src="scripts/follow-handler.js" defer></script>
     <script type="module" src="scripts/chat-handler.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/minisearch@6.1.0/dist/umd/index.min.js"></script>
+    <script type="module" src="scripts/show-search-suggestions.js" defer></script>
     
 </head>
 <body data-user-id="<?php echo htmlspecialchars($user_id); ?>" 
