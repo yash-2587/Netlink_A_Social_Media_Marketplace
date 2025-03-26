@@ -110,7 +110,7 @@ $user_profile_link = 'user_profile.php?user_id=' . $user_id . '"';
                 </li>
                 <li
                     class="nav-item d-flex align-items-center<?php echo ($active_page === 'message') ? 'fw-semibold active' : ''; ?>">
-                    <a class="nav-link d-flex px-2 ms-5 w-100" href="message.php?user_id=<?php echo $user_id; ?>">
+                    <a class="nav-link d-flex px-2 ms-5 w-100" href="messages.php?user_id=<?php echo $user_id; ?>">
                         <i
                             class="nav-link-icon bi <?php echo ($active_page === 'message') ? 'bi-chat-dots-fill' : 'bi-chat-dots'; ?> me-4 d-flex align-items-center justify-content-center"></i>
                         Message

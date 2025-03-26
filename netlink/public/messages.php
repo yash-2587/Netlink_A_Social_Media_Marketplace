@@ -1,6 +1,6 @@
 <?php
 session_start();
-
+date_default_timezone_set('Asia/Kolkata'); 
 require_once('../private/utility_functions.php');
 require_once('../private/db_functions.php');
 require_once('../private/config.php');
@@ -14,6 +14,103 @@ $user_id = $_SESSION['user_id'] ?? null; // Use session user_id instead of GET p
 if (!$user_id) {
     header('Location: login.php');
     exit;
+}
+
+function encrypt_message($message, $encryption_key) {
+    $cipher = "AES-256-CBC";
+    $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length($cipher));
+    $encrypted_message = openssl_encrypt($message, $cipher, $encryption_key, 0, $iv);
+    return base64_encode($iv . '::' . $encrypted_message);
+}
+
+function decrypt_message($encrypted_message, $encryption_key) {
+    $cipher = "AES-256-CBC";
+    $decoded_message = base64_decode($encrypted_message);
+    if (!$decoded_message) {
+        return null; // Return null if decoding fails
+    }
+
+    $parts = explode('::', $decoded_message, 2);
+    if (count($parts) !== 2) {
+        return null; // Return null if the format is invalid
+    }
+
+    list($iv, $encrypted_data) = $parts;
+    return openssl_decrypt($encrypted_data, $cipher, $encryption_key, 0, $iv);
+}
+
+// Handle AJAX requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    $action = $_POST['action'];
+
+    if ($action === 'fetchMessages') {
+        $receiver_id = intval($_POST['receiver_id'] ?? 0);
+    
+        if ($receiver_id) {
+            $stmt = $conn->prepare("SELECT sender_id, receiver_id, message, 
+                                          DATE_FORMAT(timestamp, '%Y-%m-%d %H:%i:%s') as timestamp,
+                                          DATE(timestamp) as message_date 
+                                   FROM messages 
+                                   WHERE (sender_id = :user_id1 AND receiver_id = :receiver_id1) 
+                                      OR (sender_id = :receiver_id2 AND receiver_id = :user_id2)
+                                   ORDER BY timestamp ASC");
+            $stmt->execute([
+                ':user_id1' => $user_id,
+                ':receiver_id1' => $receiver_id,
+                ':receiver_id2' => $receiver_id,
+                ':user_id2' => $user_id
+            ]);
+    
+            $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+            // Decrypt messages before sending them to the client
+            $encryption_key = 'your-secret-encryption-key'; // Replace with a secure key
+            foreach ($messages as &$message) {
+                $message['message'] = decrypt_message($message['message'], $encryption_key) ?? '[Message not available]';
+            }
+    
+            header('Content-Type: application/json');
+            echo json_encode($messages);
+        } else {
+            http_response_code(400);
+            echo json_encode(['error' => 'Invalid receiver ID']);
+        }
+        exit;
+    }
+
+    if ($action === 'sendMessage') {
+        $receiver_id = intval($_POST['receiver_id'] ?? 0);
+        $message = urldecode(trim($_POST['message'] ?? '')); // Decode URL-encoded message
+        $timestamp = date('Y-m-d H:i:s'); // This will now use the correct timezone
+
+        error_log("Receiver ID: " . $receiver_id); // Debugging log
+        error_log("Message: " . $message); // Debugging log
+
+        if ($receiver_id && $message) {
+            // Set timezone for this connection
+            $conn->exec("SET time_zone = '+05:30'"); // Adjust offset based on your timezone
+
+            // Encrypt the message
+            $encryption_key = 'your-secret-encryption-key'; // Replace with a secure key
+            $encrypted_message = encrypt_message($message, $encryption_key);
+
+            $stmt = $conn->prepare("INSERT INTO messages (sender_id, receiver_id, message, timestamp) 
+                                   VALUES (:sender_id, :receiver_id, :message, :timestamp)");
+            $stmt->execute([
+                ':sender_id' => $user_id,
+                ':receiver_id' => $receiver_id,
+                ':message' => $encrypted_message,
+                ':timestamp' => $timestamp
+            ]);
+
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'timestamp' => $timestamp]);
+        } else {
+            http_response_code(400);
+            echo json_encode(['error' => 'Invalid input']);
+        }
+        exit;
+    }
 }
 
 // Fetch all users except the logged-in user with their profile pictures
@@ -55,20 +152,12 @@ $_SESSION['csrf_token'] = $csrf_token;
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js" defer></script>
     <script src="https://unpkg.com/just-validate@latest/dist/just-validate.production.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/minisearch@6.1.0/dist/umd/index.min.js"></script>
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <script type="module" src="scripts/follow-handler.js" defer></script>
-    <script type="module" src="scripts/chat-handler.js" defer></script>
-    
 </head>
 <body data-user-id="<?php echo htmlspecialchars($user_id); ?>" 
       data-csrf-token="<?php echo htmlspecialchars($csrf_token); ?>">
 
     <?php include('header.php'); ?>
-<<<<<<< HEAD
-
-=======
     
->>>>>>> b580f41 (Initial commit)
     <div class="container-fluid">
         <div class="row" id="chat-layout">
             <!-- Message Sidebar -->
@@ -175,260 +264,163 @@ $_SESSION['csrf_token'] = $csrf_token;
     </div>
 
     <script>
-    // Initialize variables at the top
+    const POLLING_INTERVAL = 3000; // Poll every 3 seconds
+    let pollingIntervalId = null;
     const currentUserId = '<?php echo htmlspecialchars($_SESSION['user_id']); ?>';
     const currentUsername = '<?php echo htmlspecialchars($_SESSION['user_username']); ?>';
     let activeReceiverId = null;
-    
-    // Initialize socket connection with CORS settings
-    const socket = io('http://localhost:3030', {
-        withCredentials: true,
-        transports: ['websocket'],
-        cors: {
-            origin: "http://localhost:8080",
-            credentials: true
+
+    async function startPolling(receiverId) {
+        // Clear any existing polling interval
+        if (pollingIntervalId) {
+            clearInterval(pollingIntervalId);
         }
-    });
 
-    // Listen for incoming messages
-    socket.on('receiveMessage', (data) => {
-        const chatMessages = document.getElementById('chat-messages');
-        // Only add message if it's part of the current active conversation
-        if ((data.sender === currentUsername && data.receiver_id === activeReceiverId) ||
-            (data.receiver === currentUsername && data.sender_id === activeReceiverId)) {
-            
-            const messageDiv = document.createElement('div');
-            messageDiv.classList.add('message', 
-                data.sender === currentUsername ? 'sent' : 'received'
-            );
-            
-            const timestamp = new Date(data.timestamp).toLocaleTimeString([], { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-            });
-
-            messageDiv.innerHTML = `
-                <div class="message-content">
-                    <p>${escapeHtml(data.message)}</p>
-                    <small class="timestamp">${timestamp}</small>
-                </div>
-            `;
-
-            chatMessages.appendChild(messageDiv);
-            scrollToBottom();
-        }
-    });
-
-    // User search functionality
-    document.getElementById('user-search').addEventListener('input', function(e) {
-        const searchTerm = e.target.value.toLowerCase();
-        const userItems = document.getElementsByClassName('user-chat-item');
-        
-        Array.from(userItems).forEach(item => {
-            const username = item.querySelector('small').textContent.toLowerCase();
-            const displayName = item.querySelector('.fw-bold').textContent.toLowerCase();
-            const shouldShow = username.includes(searchTerm) || displayName.includes(searchTerm);
-            item.style.display = shouldShow ? 'block' : 'none';
-        });
-    });
-
-    // Update chat function
-    async function updateChat(username, userId) {
-        if (!userId) return;
-        
-        activeReceiverId = userId;
-        document.getElementById('chat-header').textContent = 'Chat with ' + username;
-        document.getElementById('receiver_id').value = userId;
-        
-        // Update active state in user list
-        const userItems = document.getElementsByClassName('user-chat-item');
-        Array.from(userItems).forEach(item => {
-            item.classList.remove('active');
-            if (item.onclick.toString().includes(userId)) {
-                item.classList.add('active');
-            }
-        });
-        
-        // Update URL without reload
-        const url = new URL(window.location);
-        url.searchParams.set('receiver', username);
-        history.pushState({}, '', url);
-        
-        // Clear existing messages
-        document.getElementById('chat-messages').innerHTML = '';
-        
-        // Fetch message history
-        await fetchMessageHistory(userId);
+        // Start new polling interval
+        pollingIntervalId = setInterval(() => {
+            fetchMessageHistory(receiverId);
+        }, POLLING_INTERVAL);
     }
 
-<<<<<<< HEAD
+    async function updateChat(username, userId) {
+        activeReceiverId = userId;
+        document.getElementById('chat-header').textContent = 'Chat with ' + username;
+        document.getElementById('receiver_id').value = userId; // Ensure this is set
+
+        // Initial fetch
+        await fetchMessageHistory(userId);
+        
+        // Start polling for this conversation
+        startPolling(userId);
+    }
+
     async function fetchMessageHistory(receiverId) {
         try {
-            if (!receiverId) {
-                console.error('No receiver ID provided');
-                return;
-            }
+            const response = await fetch('messages.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    action: 'fetchMessages',
+                    receiver_id: receiverId
+                })
+            });
 
-            const { fetchMessages } = await import('./scripts/request-utils.js');
-            const csrfToken = document.body.dataset.csrfToken;
-            
-            if (!csrfToken) {
-                console.error('No CSRF token found');
-                return;
-            }
+            const messages = await response.json();
 
-            const response = await fetchMessages(receiverId, csrfToken);
             const chatMessages = document.getElementById('chat-messages');
             chatMessages.innerHTML = '';
-            
-            // Handle error response
-            if (response && response.error) {
-                console.error('Error:', response.error);
-                // Optionally redirect to login if unauthorized
-                if (response.error === 'Unauthorized') {
-                    window.location.href = 'login.php';
+
+            // Group messages by date using ISO format (YYYY-MM-DD)
+            const messagesByDate = {};
+            messages.forEach(msg => {
+                const messageDate = msg.timestamp.split(' ')[0]; // Extract the date part (YYYY-MM-DD)
+                if (!messagesByDate[messageDate]) {
+                    messagesByDate[messageDate] = [];
                 }
-                return;
-            }
-            
-            // Handle successful response
-            if (Array.isArray(response)) {
-                response.forEach(msg => {
+                messagesByDate[messageDate].push(msg);
+            });
+
+            // Display messages grouped by date
+            Object.keys(messagesByDate).forEach(date => {
+                // Add date separator
+                const dateDiv = document.createElement('div');
+                dateDiv.classList.add('date-separator');
+                dateDiv.innerHTML = `<span>${formatMessageDate(date)}</span>`;
+                chatMessages.appendChild(dateDiv);
+
+                // Add messages for this date
+                messagesByDate[date].forEach(msg => {
                     const messageDiv = document.createElement('div');
                     messageDiv.classList.add('message', 
                         parseInt(msg.sender_id) === parseInt(currentUserId) ? 'sent' : 'received'
                     );
-                    
+
                     const timestamp = new Date(msg.timestamp).toLocaleTimeString([], {
                         hour: '2-digit',
                         minute: '2-digit'
                     });
 
+                    // Handle null or undefined message
+                    const safeMessage = msg.message ? escapeHtml(msg.message) : '[Message not available]';
+
                     messageDiv.innerHTML = `
                         <div class="message-content">
-                            <p>${escapeHtml(msg.message)}</p>
+                            <p>${safeMessage}</p>
                             <small class="timestamp">${timestamp}</small>
                         </div>
                     `;
 
                     chatMessages.appendChild(messageDiv);
                 });
-                
-                scrollToBottom();
-            } else {
-                console.error('Invalid message history format:', response);
-            }
+            });
+
+            scrollToBottom();
         } catch (error) {
             console.error('Error fetching message history:', error);
         }
     }
-=======
-   // Update the fetchMessageHistory function
-   async function fetchMessageHistory(receiverId) {
-    try {
-        if (!receiverId) {
-            console.error('No receiver ID provided');
-            return;
-        }
 
-        const csrfToken = document.body.dataset.csrfToken;
-        if (!csrfToken) {
-            console.error('No CSRF token found');
-            return;
-        }
+    // Add this helper function to format the date
+    function formatMessageDate(dateString) {
+        const messageDate = new Date(dateString); // `dateString` is now in ISO format (YYYY-MM-DD)
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
 
-        // Call execute_file.php with filename=fetch_message.php
-        const response = await fetch(`/execute_file.php?filename=fetch_message.php&receiver_id=${receiverId}`, {
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json' },
-        });
-
-        // Log the raw response for debugging
-        const responseText = await response.text();
-        console.log('Raw Response:', responseText);
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-
-        // Try to parse the response as JSON
-        let messages;
-        try {
-            messages = JSON.parse(responseText);
-        } catch (error) {
-            console.error('Failed to parse JSON:', error);
-            throw new Error('Invalid JSON response');
-        }
-
-        // Clear existing messages
-        const chatMessages = document.getElementById('chat-messages');
-        chatMessages.innerHTML = '';
-
-        // Display messages
-        messages.forEach(msg => {
-            const messageDiv = document.createElement('div');
-            messageDiv.classList.add('message', 
-                parseInt(msg.sender_id) === parseInt(currentUserId) ? 'sent' : 'received'
-            );
-
-            const timestamp = new Date(msg.timestamp).toLocaleTimeString([], {
-                hour: '2-digit',
-                minute: '2-digit'
+        // Format date based on when the message was sent
+        if (messageDate.toDateString() === today.toDateString()) {
+            return 'Today';
+        } else if (messageDate.toDateString() === yesterday.toDateString()) {
+            return 'Yesterday';
+        } else {
+            return messageDate.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
             });
-
-            messageDiv.innerHTML = `
-                <div class="message-content">
-                    <p>${escapeHtml(msg.message)}</p>
-                    <small class="timestamp">${timestamp}</small>
-                </div>
-            `;
-
-            chatMessages.appendChild(messageDiv);
-        });
-
-        scrollToBottom();
-    } catch (error) {
-        console.error('Error fetching message history:', error);
+        }
     }
-}
->>>>>>> b580f41 (Initial commit)
 
     async function sendMessage() {
         const chatInput = document.getElementById('chat-input');
         const message = chatInput.value.trim();
         const receiverId = document.getElementById('receiver_id').value;
-        
-        if (!message || !receiverId) return;
+
+        // console.log('Receiver ID:', receiverId); // Debugging log
+        // console.log('Message:', message); // Debugging log
+
+        if (!message || !receiverId) {
+            console.error('Message or Receiver ID is missing.');
+            return; // Ensure both message and receiver ID are present
+        }
 
         try {
-            const receiverUsername = document.querySelector('.user-chat-item.active small')
-                                           .textContent.replace('@', '');
-
-            // Emit the message through socket
-            socket.emit('sendMessage', {
-                sender: currentUsername,
-                sender_id: currentUserId,
-                receiver: receiverUsername,
-                receiver_id: receiverId,
-                message: message,
-                timestamp: new Date().toISOString()
+            const response = await fetch('messages.php', { // Corrected file name
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    action: 'sendMessage',
+                    receiver_id: receiverId,
+                    message: encodeURIComponent(message) // Ensure proper escaping
+                })
             });
 
-            // Clear input
-            chatInput.value = '';
-            
-            // Focus back on input
-            chatInput.focus();
+            const result = await response.json();
+            if (result.success) {
+                // Immediately fetch new messages
+                await fetchMessageHistory(receiverId);
+                
+                // Clear input
+                chatInput.value = '';
+                chatInput.focus();
+            } else {
+                console.error('Error sending message:', result.error);
+            }
         } catch (error) {
             console.error('Error sending message:', error);
         }
     }
-<<<<<<< HEAD
-=======
-    
->>>>>>> b580f41 (Initial commit)
 
-    // Helper function to escape HTML
     function escapeHtml(unsafe) {
         return unsafe
             .replace(/&/g, "&amp;")
@@ -438,24 +430,25 @@ $_SESSION['csrf_token'] = $csrf_token;
             .replace(/'/g, "&#039;");
     }
 
-    // Helper function to scroll chat to bottom
     function scrollToBottom() {
         const chatBox = document.getElementById('chat-box');
         chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    // Add event listener for send button and enter key
     document.getElementById('send-btn').addEventListener('click', sendMessage);
+
     document.getElementById('chat-input').addEventListener('keypress', function(e) {
         if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
+            e.preventDefault(); // Prevent default behavior of Enter key
             sendMessage();
         }
     });
 
-    // Attach functions to the global ChatHandler object
-    window.ChatHandler = window.ChatHandler || {};
-    window.ChatHandler.loadMessageHistory = fetchMessageHistory;
+    window.addEventListener('beforeunload', () => {
+        if (pollingIntervalId) {
+            clearInterval(pollingIntervalId);
+        }
+    });
     </script>
 </body>
 </html>
