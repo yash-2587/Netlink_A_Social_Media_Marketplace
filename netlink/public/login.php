@@ -67,6 +67,9 @@ session_start();
                                                 <p class="m-0 px-3 w-100 bg-light text-truncate">Password</p>
                                             </label>
                                         </div>
+                                        <div class="d-flex justify-content-end mt-2">
+                                            <a href="forgot-password.php" class="text-decoration-none small">Forgot Password?</a>
+                                        </div>
                                         <div>
                                             <button class="btn btn-primary fw-bold w-100" name="submit-button"
                                                 type="submit">Log
