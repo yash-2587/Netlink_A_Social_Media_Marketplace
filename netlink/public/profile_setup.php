@@ -46,11 +46,7 @@ if (empty($_SERVER['HTTP_REFERER']) || !isset($_SESSION['registration_complete']
                             <label for="display-name" class="form-label">Profile Picture</label>
                             <div class="d-flex align-items-center">
                                 <div class="me-3">
-<<<<<<< HEAD
-                                    <img src="https://res.cloudinary.com/dp4vwqhol/image/upload/v1687030814/momento/images/default-pfp_cv6ra7.jpg"
-=======
                                      <img src="profile.jpg"
->>>>>>> b580f41 (Initial commit)
                                         class="profile-picture-picker-image img-fluid rounded-circle"
                                         id="profile-picture-picker-image" alt="profile picture" />
                                 </div>

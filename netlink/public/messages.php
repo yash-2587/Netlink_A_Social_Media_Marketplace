@@ -38,7 +38,7 @@ function decrypt_message($encrypted_message, $encryption_key) {
     list($iv, $encrypted_data) = $parts;
     return openssl_decrypt($encrypted_data, $cipher, $encryption_key, 0, $iv);
 }
-
+$encryption_key = 'daku-and-netlink'; // Replace with a secure key
 // Handle AJAX requests
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];
@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $receiver_id = intval($_POST['receiver_id'] ?? 0);
     
         if ($receiver_id) {
-            $stmt = $conn->prepare("SELECT sender_id, receiver_id, message, 
+            $stmt = $conn->prepare("SELECT sender_id, receiver_id, message, is_image, is_video, 
                                           DATE_FORMAT(timestamp, '%Y-%m-%d %H:%i:%s') as timestamp,
                                           DATE(timestamp) as message_date 
                                    FROM messages 
@@ -64,9 +64,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
             // Decrypt messages before sending them to the client
-            $encryption_key = 'your-secret-encryption-key'; // Replace with a secure key
             foreach ($messages as &$message) {
-                $message['message'] = decrypt_message($message['message'], $encryption_key) ?? '[Message not available]';
+                if ($message['is_image']) {
+                    $decrypted_path = decrypt_message($message['message'], $encryption_key);
+                    $message['message'] = $decrypted_path && file_exists($decrypted_path) ? $decrypted_path : '[Image not available]';
+                } elseif ($message['is_video']) {
+                    $decrypted_path = decrypt_message($message['message'], $encryption_key);
+                    $message['message'] = $decrypted_path && file_exists($decrypted_path) ? $decrypted_path : '[Video not available]';
+                } else {
+                    $decrypted_message = decrypt_message($message['message'], $encryption_key);
+                    $message['message'] = $decrypted_message ? $decrypted_message : '[Message not available]';
+                }
             }
     
             header('Content-Type: application/json');
@@ -91,11 +99,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $conn->exec("SET time_zone = '+05:30'"); // Adjust offset based on your timezone
 
             // Encrypt the message
-            $encryption_key = 'your-secret-encryption-key'; // Replace with a secure key
+            // $encryption_key = 'daku-and-netlink'; // Replace with a secure key
             $encrypted_message = encrypt_message($message, $encryption_key);
 
-            $stmt = $conn->prepare("INSERT INTO messages (sender_id, receiver_id, message, timestamp) 
-                                   VALUES (:sender_id, :receiver_id, :message, :timestamp)");
+            // Corrected SQL INSERT statement
+            $stmt = $conn->prepare("INSERT INTO messages (sender_id, receiver_id, message, timestamp, is_image) 
+                                    VALUES (:sender_id, :receiver_id, :message, :timestamp, 0)");
             $stmt->execute([
                 ':sender_id' => $user_id,
                 ':receiver_id' => $receiver_id,
@@ -105,6 +114,88 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
             header('Content-Type: application/json');
             echo json_encode(['success' => true, 'timestamp' => $timestamp]);
+        } else {
+            http_response_code(400);
+            echo json_encode(['error' => 'Invalid input']);
+        }
+        exit;
+    }
+
+    // Ensure no debug logs are printed for successful image requests
+    if ($action === 'sendImage') {
+        $receiver_id = intval($_POST['receiver_id'] ?? 0);
+        $timestamp = date('Y-m-d H:i:s'); // This will now use the correct timezone
+
+        if ($receiver_id && isset($_FILES['image'])) {
+            $image = $_FILES['image'];
+            $upload_dir = 'uploads/image-messages/';
+
+            // Ensure the uploads directory exists
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0777, true); // Create the directory with proper permissions
+            }
+
+            $image_path = $upload_dir . uniqid() . '_' . basename($image['name']);
+
+            if (move_uploaded_file($image['tmp_name'], $image_path)) {
+                // Encrypt the image path before saving
+                // $encryption_key = 'daku-and-netlink'; // Ensure this key matches the one used in fetchMessages
+                $encrypted_image_path = encrypt_message($image_path, $encryption_key);
+
+                $stmt = $conn->prepare("INSERT INTO messages (sender_id, receiver_id, message, timestamp, is_image) 
+                                       VALUES (:sender_id, :receiver_id, :message, :timestamp, 1)");
+                $stmt->execute([
+                    ':sender_id' => $user_id,
+                    ':receiver_id' => $receiver_id,
+                    ':message' => $encrypted_image_path,
+                    ':timestamp' => $timestamp
+                ]);
+                header('Content-Type: application/json');
+                echo json_encode(['success' => true, 'timestamp' => $timestamp, 'image_path' => $image_path]);
+            } else {
+                http_response_code(500);
+                echo json_encode(['error' => 'Failed to upload image']);
+            }
+        } else {
+            http_response_code(400);
+            echo json_encode(['error' => 'Invalid input']);
+        }
+        exit;
+    }
+
+    if ($action === 'sendVideo') {
+        $receiver_id = intval($_POST['receiver_id'] ?? 0);
+        $timestamp = date('Y-m-d H:i:s'); // This will now use the correct timezone
+    
+        if ($receiver_id && isset($_FILES['video'])) {
+            $video = $_FILES['video'];
+            $upload_dir = 'uploads/video-messages/';
+    
+            // Ensure the uploads directory exists
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0777, true); // Create the directory with proper permissions
+            }
+    
+            $video_path = $upload_dir . uniqid() . '_' . basename($video['name']);
+    
+            if (move_uploaded_file($video['tmp_name'], $video_path)) {
+                // Encrypt the video path before saving
+                $encrypted_video_path = encrypt_message($video_path, $encryption_key);
+    
+                $stmt = $conn->prepare("INSERT INTO messages (sender_id, receiver_id, message, timestamp, is_image, is_video) 
+                                       VALUES (:sender_id, :receiver_id, :message, :timestamp, 0, 1)");
+                $stmt->execute([
+                    ':sender_id' => $user_id,
+                    ':receiver_id' => $receiver_id,
+                    ':message' => $encrypted_video_path,
+                    ':timestamp' => $timestamp
+                ]);
+                header('Content-Type: application/json');
+                echo json_encode(['success' => true, 'timestamp' => $timestamp, 'video_path' => $video_path]);
+            } else {
+                http_response_code(500);
+                echo json_encode(['error' => 'Failed to upload video']);
+            }
         } else {
             http_response_code(400);
             echo json_encode(['error' => 'Invalid input']);
@@ -155,7 +246,6 @@ $_SESSION['csrf_token'] = $csrf_token;
 </head>
 <body data-user-id="<?php echo htmlspecialchars($user_id); ?>" 
       data-csrf-token="<?php echo htmlspecialchars($csrf_token); ?>">
-
     <?php include('header.php'); ?>
     
     <div class="container-fluid">
@@ -166,6 +256,7 @@ $_SESSION['csrf_token'] = $csrf_token;
                     <div class="d-flex flex-column h-100 w-100">
                         <!-- Current User Profile -->
                         <div class="sidebar-header p-3 border-bottom">
+                            <a href="group_chats.php" class="btn btn-outline-primary w-100 mb-2">Group Chats</a>
                             <a href="<?php echo htmlspecialchars($user_profile_link); ?>" 
                                class="text-decoration-none">
                                 <div class="d-flex align-items-center">
@@ -200,14 +291,13 @@ $_SESSION['csrf_token'] = $csrf_token;
                                 <?php foreach ($users as $user): ?>
                                     <button type="button" 
                                             class="list-group-item list-group-item-action user-chat-item"
-                                            onclick="updateChat('<?php echo htmlspecialchars($user['username']); ?>', 
-                                                              <?php echo htmlspecialchars($user['id']); ?>)">
+                                            onclick="updateChat('<?php echo htmlspecialchars($user['display_name']); ?>', <?php echo htmlspecialchars($user['id']); ?>)">
                                         <div class="d-flex align-items-center">
                                             <img class="rounded-circle me-2" 
                                                  src="<?php echo htmlspecialchars(add_transformation_parameters(
                                                      $user['profile_picture_path'], 
                                                      'w_40,h_40,c_fill'
-                                                 )); ?>"
+                                                 )); ?>" 
                                                  alt="<?php echo htmlspecialchars($user['username']); ?>'s profile picture"
                                                  width="32" 
                                                  height="32">
@@ -227,7 +317,6 @@ $_SESSION['csrf_token'] = $csrf_token;
                     </div>
                 </nav>
             </div>
-
             <!-- Chat Interface -->
             <div class="col-md-9 col-lg-10 p-0" id="chat-ui">
                 <div class="chat-container d-flex flex-column h-100">
@@ -238,7 +327,7 @@ $_SESSION['csrf_token'] = $csrf_token;
 
                     <!-- Messages Container -->
                     <div id="chat-box" class="flex-grow-1 overflow-auto p-3">
-                        <div id="chat-messages"></div>                       
+                        <div id="chat-messages"></div> <!-- Ensure this exists -->
                     </div>
 
                     <!-- Message Input -->
@@ -247,13 +336,23 @@ $_SESSION['csrf_token'] = $csrf_token;
                             <input type="text" 
                                    id="chat-input" 
                                    class="form-control" 
-                                   placeholder="Type a message..."
+                                   placeholder="Type a message..." 
                                    aria-label="Type a message">
                             <button class="btn btn-primary" 
                                     id="send-btn" 
                                     type="button">
                                 <i class="bi bi-send"></i>
                                 Send
+                            </button>
+                            <input type="file" id="image-input" class="form-control" accept="image/*" style="display: none;">
+                            <button class="btn btn-secondary" id="image-btn" type="button">
+                                <i class="bi bi-image"></i>
+                                Image
+                            </button>
+                            <input type="file" id="video-input" class="form-control" accept="video/*" style="display: none;">
+                            <button class="btn btn-secondary" id="video-btn" type="button">
+                                <i class="bi bi-camera-video"></i>
+                                Video
                             </button>
                         </div>
                     </div>
@@ -262,9 +361,8 @@ $_SESSION['csrf_token'] = $csrf_token;
             </div>
         </div>
     </div>
-
     <script>
-    const POLLING_INTERVAL = 3000; // Poll every 3 seconds
+    const POLLING_INTERVAL = 3000; // Poll every 3 minutes
     let pollingIntervalId = null;
     const currentUserId = '<?php echo htmlspecialchars($_SESSION['user_id']); ?>';
     const currentUsername = '<?php echo htmlspecialchars($_SESSION['user_username']); ?>';
@@ -275,7 +373,6 @@ $_SESSION['csrf_token'] = $csrf_token;
         if (pollingIntervalId) {
             clearInterval(pollingIntervalId);
         }
-
         // Start new polling interval
         pollingIntervalId = setInterval(() => {
             fetchMessageHistory(receiverId);
@@ -283,13 +380,23 @@ $_SESSION['csrf_token'] = $csrf_token;
     }
 
     async function updateChat(username, userId) {
+        console.log('User selected:', username, 'with ID:', userId); // Debugging log
         activeReceiverId = userId;
+
+        // Clear the chat box
+        const chatMessages = document.getElementById('chat-messages');
+        chatMessages.innerHTML = ''; // Clear the message box
+
+        // Update the chat header
         document.getElementById('chat-header').textContent = 'Chat with ' + username;
         document.getElementById('receiver_id').value = userId; // Ensure this is set
 
-        // Initial fetch
+        // Fetch messages and scroll to the last message
         await fetchMessageHistory(userId);
-        
+
+        // Scroll to the last message
+        scrollToBottom();
+
         // Start polling for this conversation
         startPolling(userId);
     }
@@ -305,79 +412,66 @@ $_SESSION['csrf_token'] = $csrf_token;
                 })
             });
 
+            if (!response.ok) {
+                console.error('Failed to fetch messages:', response.statusText);
+                return;
+            }
+
             const messages = await response.json();
+            if (!Array.isArray(messages)) {
+                console.error('Invalid response format:', messages);
+                return;
+            }
 
             const chatMessages = document.getElementById('chat-messages');
-            chatMessages.innerHTML = '';
+            chatMessages.innerHTML = ''; // Clear the message box
 
-            // Group messages by date using ISO format (YYYY-MM-DD)
-            const messagesByDate = {};
-            messages.forEach(msg => {
-                const messageDate = msg.timestamp.split(' ')[0]; // Extract the date part (YYYY-MM-DD)
-                if (!messagesByDate[messageDate]) {
-                    messagesByDate[messageDate] = [];
-                }
-                messagesByDate[messageDate].push(msg);
-            });
+            // Debugging: Log messages to verify the response
+            console.log('Fetched messages:', messages);
 
-            // Display messages grouped by date
-            Object.keys(messagesByDate).forEach(date => {
-                // Add date separator
-                const dateDiv = document.createElement('div');
-                dateDiv.classList.add('date-separator');
-                dateDiv.innerHTML = `<span>${formatMessageDate(date)}</span>`;
-                chatMessages.appendChild(dateDiv);
+            // Render messages in reverse order
+            messages.reverse().forEach(msg => {
+                const messageDiv = document.createElement('div');
+                messageDiv.classList.add('message', 
+                    parseInt(msg.sender_id) === parseInt(currentUserId) ? 'sent' : 'received'
+                );
 
-                // Add messages for this date
-                messagesByDate[date].forEach(msg => {
-                    const messageDiv = document.createElement('div');
-                    messageDiv.classList.add('message', 
-                        parseInt(msg.sender_id) === parseInt(currentUserId) ? 'sent' : 'received'
-                    );
+                const timestamp = new Date(msg.timestamp).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
 
-                    const timestamp = new Date(msg.timestamp).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    });
-
-                    // Handle null or undefined message
+                if (msg.is_image) {
+                    messageDiv.innerHTML = `
+                        <div class="message-content">
+                            <img src="${escapeHtml(msg.message)}" alt="Image" class="chat-image">
+                            <small class="timestamp">${timestamp}</small>
+                        </div>
+                    `;
+                } else if (msg.is_video) {
+                    messageDiv.innerHTML = `
+                        <div class="message-content">
+                            <video controls class="chat-video">
+                                <source src="${escapeHtml(msg.message)}" type="video/mp4">
+                                Your browser does not support the video tag.
+                            </video>
+                            <small class="timestamp">${timestamp}</small>
+                        </div>
+                    `;
+                } else {
                     const safeMessage = msg.message ? escapeHtml(msg.message) : '[Message not available]';
-
                     messageDiv.innerHTML = `
                         <div class="message-content">
                             <p>${safeMessage}</p>
                             <small class="timestamp">${timestamp}</small>
                         </div>
                     `;
+                }
 
-                    chatMessages.appendChild(messageDiv);
-                });
+                chatMessages.prepend(messageDiv); // Prepend messages to extend upwards
             });
-
-            scrollToBottom();
         } catch (error) {
             console.error('Error fetching message history:', error);
-        }
-    }
-
-    // Add this helper function to format the date
-    function formatMessageDate(dateString) {
-        const messageDate = new Date(dateString); // `dateString` is now in ISO format (YYYY-MM-DD)
-        const today = new Date();
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-
-        // Format date based on when the message was sent
-        if (messageDate.toDateString() === today.toDateString()) {
-            return 'Today';
-        } else if (messageDate.toDateString() === yesterday.toDateString()) {
-            return 'Yesterday';
-        } else {
-            return messageDate.toLocaleDateString('en-US', { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-            });
         }
     }
 
@@ -385,7 +479,6 @@ $_SESSION['csrf_token'] = $csrf_token;
         const chatInput = document.getElementById('chat-input');
         const message = chatInput.value.trim();
         const receiverId = document.getElementById('receiver_id').value;
-
         // console.log('Receiver ID:', receiverId); // Debugging log
         // console.log('Message:', message); // Debugging log
 
@@ -393,7 +486,6 @@ $_SESSION['csrf_token'] = $csrf_token;
             console.error('Message or Receiver ID is missing.');
             return; // Ensure both message and receiver ID are present
         }
-
         try {
             const response = await fetch('messages.php', { // Corrected file name
                 method: 'POST',
@@ -404,15 +496,14 @@ $_SESSION['csrf_token'] = $csrf_token;
                     message: encodeURIComponent(message) // Ensure proper escaping
                 })
             });
-
             const result = await response.json();
             if (result.success) {
                 // Immediately fetch new messages
                 await fetchMessageHistory(receiverId);
-                
                 // Clear input
                 chatInput.value = '';
                 chatInput.focus();
+                scrollToBottom(); // Ensure the latest message is visible
             } else {
                 console.error('Error sending message:', result.error);
             }
@@ -421,26 +512,86 @@ $_SESSION['csrf_token'] = $csrf_token;
         }
     }
 
-    function escapeHtml(unsafe) {
-        return unsafe
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
+    async function sendImage() {
+        const imageInput = document.getElementById('image-input');
+        const receiverId = document.getElementById('receiver_id').value;
+
+        if (!imageInput.files.length || !receiverId) {
+            console.error('Image or Receiver ID is missing.');
+            return; // Ensure both image and receiver ID are present
+        }
+        const formData = new FormData();
+        formData.append('action', 'sendImage');
+        formData.append('receiver_id', receiverId);
+        formData.append('image', imageInput.files[0]);
+
+        try {
+            const response = await fetch('messages.php', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+            if (result.success) {
+                // Immediately fetch new messages
+                await fetchMessageHistory(receiverId);
+                // Clear input
+                imageInput.value = '';
+                scrollToBottom(); // Ensure the latest message is visible
+            } else {
+                console.error('Error sending image:', result.error);
+            }
+        } catch (error) {
+            console.error('Error sending image:', error);
+        }
     }
 
-    function scrollToBottom() {
-        const chatBox = document.getElementById('chat-box');
-        chatBox.scrollTop = chatBox.scrollHeight;
+    async function sendVideo() {
+        const videoInput = document.getElementById('video-input');
+        const receiverId = document.getElementById('receiver_id').value;
+
+        if (!videoInput.files.length || !receiverId) {
+            console.error('Video or Receiver ID is missing.');
+            return; // Ensure both video and receiver ID are present
+        }
+        const formData = new FormData();
+        formData.append('action', 'sendVideo');
+        formData.append('receiver_id', receiverId);
+        formData.append('video', videoInput.files[0]);
+
+        try {
+            const response = await fetch('messages.php', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+            if (result.success) {
+                // Immediately fetch new messages
+                await fetchMessageHistory(receiverId);
+                // Clear input
+                videoInput.value = '';
+                scrollToBottom(); // Ensure the latest message is visible
+            } else {
+                console.error('Error sending video:', result.error);
+            }
+        } catch (error) {
+            console.error('Error sending video:', error);
+        }
     }
 
     document.getElementById('send-btn').addEventListener('click', sendMessage);
+    document.getElementById('image-btn').addEventListener('click', () => {
+        document.getElementById('image-input').click();
+    });
+    document.getElementById('image-input').addEventListener('change', sendImage);
+    document.getElementById('video-btn').addEventListener('click', () => {
+        document.getElementById('video-input').click();
+    });
+    document.getElementById('video-input').addEventListener('change', sendVideo);
 
     document.getElementById('chat-input').addEventListener('keypress', function(e) {
         if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault(); // Prevent default behavior of Enter key
             sendMessage();
+            e.preventDefault(); // Prevent default behavior of Enter key
         }
     });
 
@@ -449,6 +600,21 @@ $_SESSION['csrf_token'] = $csrf_token;
             clearInterval(pollingIntervalId);
         }
     });
+
+    function scrollToBottom() {
+        const chatBox = document.getElementById('chat-box');
+        chatBox.scrollTop = chatBox.scrollHeight; // Ensure the bottom portion is visible
+    }
+
+    function escapeHtml(unsafe) {
+        return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;") // Fixed typo here
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+    
     </script>
 </body>
 </html>
