@@ -500,3 +500,39 @@ main {
 .marketplace-header.w-100.mb-4 {
   margin-top: 1.5rem;
 }
+.is-invalid {
+  border-color: #dc3545 !important;
+}
+
+.error-message {
+  color: #dc3545;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+/* Password requirements styling */
+#password-requirements {
+    background-color: #f8f9fa;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    margin-top: 0.5rem;
+}
+
+#password-requirements ul {
+    margin-bottom: 0;
+}
+
+.text-success {
+    color: #28a745 !important;
+}
+
+.text-muted {
+    color: #6c757d !important;
+}
+
+/* Checkmark styling */
+#password-requirements li::before {
+    content: "✓ ";
+    display: inline-block;
+    width: 1em;
+    margin-left: -1em;
+}
