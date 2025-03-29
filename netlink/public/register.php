@@ -61,6 +61,7 @@ $username = $_SESSION['username'] ?? '';
                                                 <label class="w-100 px-0">
                                                     <p class="bg-light px-3 w-100 text-truncate">Email</p>
                                                 </label>
+                                                 <div id="email-error" class="text-danger small mt-1"></div>
                                             </div>
                                             <div class="form-floating w-100">
                                                 <input class="form-control bg-light px-3" id="phone-number"
@@ -70,6 +71,7 @@ $username = $_SESSION['username'] ?? '';
                                                 <label class="w-100 px-0">
                                                     <p class="bg-light px-3 w-100 text-truncate">Phone Number</p>
                                                 </label>
+                                                <div id="phone-number-error" class="text-danger small mt-1"></div>
                                             </div>
                                         </div>
                                         <div class="form-floating">
@@ -79,6 +81,7 @@ $username = $_SESSION['username'] ?? '';
                                             <label class="w-100 px-0">
                                                 <p class="bg-light px-3 w-100 text-truncate">Full Name</p>
                                             </label>
+                                            <div id="full-name-error" class="text-danger small mt-1"></div>
                                         </div>
                                         <div class="form-floating">
                                             <input class="form-control bg-light px-3" id="username" name="username"
@@ -94,7 +97,18 @@ $username = $_SESSION['username'] ?? '';
                                             <label class="w-100 px-0">
                                                 <p class="bg-light px-3 w-100 text-truncate">Password</p>
                                             </label>
+                                            <div id="password-error" class="text-danger small mt-1"></div>
+                                            <div id="password-requirements" class="small mt-2">
+                                                <p class="mb-1 fw-semibold">Password must contain:</p>
+                                                <ul class="list-unstyled">
+                                                    <li id="req-length" class="text-muted">✓ At least 8 characters</li>
+                                                    <li id="req-uppercase" class="text-muted">✓ 1 uppercase letter</li>
+                                                    <li id="req-lowercase" class="text-muted">✓ 1 lowercase letter</li>
+                                                    <li id="req-number" class="text-muted">✓ 1 number</li>
+                                                </ul>
+                                            </div>
                                         </div>
+                                        
                                         <div>
                                             <button id="register-submit-button" class="btn btn-primary fw-bold w-100"
                                                 name="submit" type="submit">Next</button>

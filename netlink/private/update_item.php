@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['item_id'])) {
         $_SESSION['error_message'] = "You do not have permission to edit this item.";
     }
 
-    header("Location: ../public/user_profile.php?user_id=$user_id");
+    header("Location: ../user_profile.php?user_id=$user_id");
     exit();
 }
 ?>
