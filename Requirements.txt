@@ -1,0 +1,11 @@
+System Requirements
+Server:
+PHP 8.1 or later.
+MySQL database.
+Client:
+Modern web browser with JavaScript enabled.
+Dependencies
+PHP Extensions:
+curl, json, and mbstring for Stripe integration.
+Composer:
+Used to manage dependencies like Stripe.

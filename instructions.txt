@@ -1,0 +1,19 @@
+1. The application is running as two tmux sessions namely “netlink” and “netlink-admin” on localhost ports 8000 and 8001 respectively.
+
+2. Live tmux sessions can be listed with “tmux list-sessions”.
+
+3. to attach with any of the live sessions use command “tmux attach -t <netlink/netlink-admin>”.
+
+4. The php applications are running through “php -S localhost:8000” for netlink and “php -S localhost:8001” for netlink-admin.
+
+5. This command allows you to run the php application as a development server and you can see all the requests of GET and POST through the php server.
+
+6. To detach the terminal from the tmux session press Ctrl + B and then D.
+
+7. This way you can detach from the terminal without terminating the running php server.
+
+8. The application database is based on mysql which can be accessed through command line “sudo mysql -u root”.
+
+9. There is another user “fcs26” for accessing the database but unlike root it is only privileged for Database used in the project i.e. Netlink.
+
+10. Connection to database Netlink can be established through command line “use netlink;”
