@@ -11,7 +11,7 @@ if (empty($_SESSION['cart'])) {
 }
 
 require_once("stripe-php-16.6.0/stripe-php-16.6.0/init.php");
-\Stripe\Stripe::setApiKey('sk_test_51R3K7RFZsqT1etgMMfcQsnhkQBqvASDsEqgsAPIrWd8bohJnSZ5g6YaEf7452Cx5z5peYJZAntfpUVsTWJntzBgE001jkyZmaA');
+
 
 $cart_items = $_SESSION['cart'];
 $total_amount = array_sum(array_map(function($item) {
@@ -126,7 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['stripeToken'])) {
                 <!-- Stripe JS -->
                 <script src="https://js.stripe.com/v3/"></script>
                 <script>
-                    var stripe=Stripe('pk_test_51R3K7RFZsqT1etgMVjVSdw66mYs6h6MtYBcdONGXenpcVLpBCwWN0Ran1xpO1vcIpjntZwn8QAeJH7c27ImhNyaQ00luGnZcky');
+                    
                     var elements=stripe.elements();
                     var card=elements.create('card');
                     card.mount('#card-element');
