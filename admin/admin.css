@@ -1,0 +1,134 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f0f2f5;
+}
+
+.header {
+    background-color: #1976d2;
+    color: white;
+    padding: 1rem;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.dashboard-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 2rem auto;
+}
+
+.card {
+    background: white;
+    border-radius: 8px;
+    padding: 2rem;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+button {
+    background-color: #1976d2;
+    color: white;
+    border: none;
+    padding: 0.8rem 1.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    margin-top: 1rem;
+}
+
+button:hover {
+    background-color: #1565c0;
+}
+
+.table-container {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+th,
+td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+th {
+    background-color: #1976d2;
+    color: white;
+}
+
+tr:hover {
+    background-color: #f5f5f5;
+}
+
+.back-btn {
+    color: white;
+    text-decoration: none;
+    position: absolute;
+    left: 1rem;
+    top: 1.4rem;
+}
+
+
+/* Inline styles for demonstration */
+/* Button in the top right for enabling delete mode */
+.delete-btn {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    padding: 8px 12px;
+    background-color: #f44336;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+/* Container for Apply/Cancel buttons (initially hidden) */
+.action-buttons {
+    position: fixed;
+    top: 10px;
+    right: 110px;
+    display: none;
+}
+
+.action-buttons button {
+    margin-left: 5px;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.apply-btn {
+    background-color: #4caf50;
+    color: #fff;
+}
+
+.cancel-btn {
+    background-color: #9e9e9e;
+    color: #fff;
+}
+
+/* Hide checkbox column by default */
+.checkbox-column {
+    display: none;
+}
