@@ -29,7 +29,7 @@ CREATE TABLE `items_table` (
   `user_id` int(11) NOT NULL,
   `name` varchar(255) NOT NULL,
   `description` text NOT NULL,
-  `price` decimal(10,2) NOT NULL,
+  `price` decimal(10,2) unsigned NOT NULL,
   `image_path` varchar(255) NOT NULL,
   `created_at` datetime NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
